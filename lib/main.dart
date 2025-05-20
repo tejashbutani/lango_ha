@@ -28,7 +28,7 @@ class _MyAppState extends State<MyApp> {
 
   void androidViewWhiteboardVisible(BuildContext context) {
     setState(() {
-      isAndroidViewWhiteboardVisible = true;
+      isAndroidViewWhiteboardVisible = !isAndroidViewWhiteboardVisible;
     });
   }
 
@@ -79,7 +79,7 @@ class _MyAppState extends State<MyApp> {
                     const SizedBox(width: 16),
                     ElevatedButton(
                       onPressed: () => androidViewWhiteboardVisible(context),
-                      child: const Text('Open Android View Whiteboard'),
+                      child: Text('Open Android View Whiteboard ${isAndroidViewWhiteboardVisible ? 'Visible' : 'Hidden'}'),
                     ),
                   ],
                 ),
