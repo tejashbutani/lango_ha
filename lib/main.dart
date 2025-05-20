@@ -15,10 +15,14 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  static const MethodChannel _channel = MethodChannel('com.example.lango_ha/native');
 
-  Future<dynamic> _handleMethodCall(MethodCall call) async {
-    await Future.delayed(const Duration(milliseconds: 10));
-    print("[LANGOHA][_handleMethodCall] Received method call: ${call.method}");
+  Future<void> launchNativeWhiteboard() async {
+    try {
+      await _channel.invokeMethod('launchWhiteboard');
+    } catch (e) {
+      print('Error launching native whiteboard: $e');
+    }
   }
 
   @override
@@ -30,15 +34,11 @@ class _MyAppState extends State<MyApp> {
         useMaterial3: true,
       ),
       home: Scaffold(
-        body: AndroidView(
-          viewType: 'custom_canvas_view',
-          creationParams: {},
-          creationParamsCodec: StandardMessageCodec(),
-          onPlatformViewCreated: (int id) {
-            print("[LANGOHA][onPlatformViewCreated] Trying to create Platform Channel");
-            // androidViewChannel = MethodChannel('custom_canvas_view_$id');
-            // androidViewChannel?.setMethodCallHandler(_handleMethodCall);
-          },
+        body: Center(
+          child: ElevatedButton(
+            onPressed: launchNativeWhiteboard,
+            child: const Text('Open Native Whiteboard'),
+          ),
         ),
       ),
     );
