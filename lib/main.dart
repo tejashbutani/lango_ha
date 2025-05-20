@@ -69,10 +69,15 @@ class AndroidViewWhiteboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Android View Whiteboard')),
-      body: const AndroidView(
-        viewType: 'custom_canvas_view',
-        creationParams: {},
-        creationParamsCodec: StandardMessageCodec(),
+      body:  AndroidView(
+          viewType: 'custom_canvas_view',
+          creationParams: {},
+          creationParamsCodec: StandardMessageCodec(),
+          onPlatformViewCreated: (int id) {
+            print("[LANGOHA][onPlatformViewCreated] Trying to create Platform Channel");
+            // androidViewChannel = MethodChannel('custom_canvas_view_$id');
+            // androidViewChannel?.setMethodCallHandler(_handleMethodCall);
+          },
       ),
     );
   }
