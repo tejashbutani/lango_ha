@@ -16,6 +16,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   static const MethodChannel _channel = MethodChannel('com.example.lango_ha/native');
+  bool isAndroidViewWhiteboardVisible = false;
 
   Future<void> launchNativeWhiteboard() async {
     try {
@@ -25,12 +26,10 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  void openAndroidViewWhiteboard(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const AndroidViewWhiteboardPage(),
-      ),
-    );
+  void androidViewWhiteboardVisible(BuildContext context) {
+    setState(() {
+      isAndroidViewWhiteboardVisible = true;
+    });
   }
 
   @override
@@ -50,34 +49,33 @@ class _MyAppState extends State<MyApp> {
                 onPressed: launchNativeWhiteboard,
                 child: const Text('Open Native Whiteboard'),
               ),
+              const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () => openAndroidViewWhiteboard(context),
+                onPressed: () => androidViewWhiteboardVisible(context),
                 child: const Text('Open Android View Whiteboard'),
               ),
+              const SizedBox(height: 16),
+              if (isAndroidViewWhiteboardVisible)
+                Container(
+                  width: 320,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.blue),
+                  ),
+                  child: AndroidView(
+                    viewType: 'custom_canvas_view',
+                    creationParams: const {},
+                    creationParamsCodec: const StandardMessageCodec(),
+                    onPlatformViewCreated: (int id) {
+                      print("[LANGOHA][onPlatformViewCreated] Trying to create Platform Channel");
+                      // androidViewChannel = MethodChannel('custom_canvas_view_$id');
+                      // androidViewChannel?.setMethodCallHandler(_handleMethodCall);
+                    },
+                  ),
+                ),
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class AndroidViewWhiteboardPage extends StatelessWidget {
-  const AndroidViewWhiteboardPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Android View Whiteboard')),
-      body:  AndroidView(
-          viewType: 'custom_canvas_view',
-          creationParams: {},
-          creationParamsCodec: StandardMessageCodec(),
-          onPlatformViewCreated: (int id) {
-            print("[LANGOHA][onPlatformViewCreated] Trying to create Platform Channel");
-            // androidViewChannel = MethodChannel('custom_canvas_view_$id');
-            // androidViewChannel?.setMethodCallHandler(_handleMethodCall);
-          },
       ),
     );
   }
