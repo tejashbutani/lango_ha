@@ -64,10 +64,15 @@ public class DrawSurfaceView extends SurfaceView implements SurfaceHolder.Callba
 
     public DrawSurfaceView(Context context) {
         super(context);
+        initializeView();
     }
 
     public DrawSurfaceView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        initializeView();
+    }
+
+    private void initializeView() {
         Log.d(TAG, "DrawSurfaceView");
         mSurfaceHolder = this.getHolder();
         mSurfaceHolder.addCallback(this);
@@ -87,7 +92,6 @@ public class DrawSurfaceView extends SurfaceView implements SurfaceHolder.Callba
         mDrawCanvas = new Canvas(mDrawBitmap);
 
         drawSkipBoundsRect = new Rect();
-
 
         final Runnable runnable = new Runnable() {
             @Override
@@ -117,13 +121,17 @@ public class DrawSurfaceView extends SurfaceView implements SurfaceHolder.Callba
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        getViewTreeObserver().addOnGlobalLayoutListener(mPreDrawListener);
+        if (mPreDrawListener != null) {
+            getViewTreeObserver().addOnGlobalLayoutListener(mPreDrawListener);
+        }
     }
 
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
-        getViewTreeObserver().removeOnGlobalLayoutListener(mPreDrawListener);
+        if (mPreDrawListener != null) {
+            getViewTreeObserver().removeOnGlobalLayoutListener(mPreDrawListener);
+        }
     }
 
     @Override
