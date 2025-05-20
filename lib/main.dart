@@ -41,40 +41,51 @@ class _MyAppState extends State<MyApp> {
         useMaterial3: true,
       ),
       home: Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ElevatedButton(
-                onPressed: launchNativeWhiteboard,
-                child: const Text('Open Native Whiteboard'),
+        body: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: MediaQuery.of(context).size.width * 0.8,
+              height: MediaQuery.of(context).size.height * 0.8,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.blue),
               ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => androidViewWhiteboardVisible(context),
-                child: const Text('Open Android View Whiteboard'),
-              ),
-              const SizedBox(height: 16),
-              if (isAndroidViewWhiteboardVisible)
-                Container(
-                  width: 320,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.blue),
-                  ),
-                  child: AndroidView(
-                    viewType: 'custom_canvas_view',
-                    creationParams: const {},
-                    creationParamsCodec: const StandardMessageCodec(),
-                    onPlatformViewCreated: (int id) {
-                      print("[LANGOHA][onPlatformViewCreated] Trying to create Platform Channel");
-                      // androidViewChannel = MethodChannel('custom_canvas_view_$id');
-                      // androidViewChannel?.setMethodCallHandler(_handleMethodCall);
-                    },
-                  ),
+              child: isAndroidViewWhiteboardVisible
+                  ? AndroidView(
+                      viewType: 'custom_canvas_view',
+                      creationParams: const {},
+                      creationParamsCodec: const StandardMessageCodec(),
+                      onPlatformViewCreated: (int id) {
+                        print("[LANGOHA][onPlatformViewCreated] Trying to create Platform Channel");
+                        // androidViewChannel = MethodChannel('custom_canvas_view_$id');
+                        // androidViewChannel?.setMethodCallHandler(_handleMethodCall);
+                      },
+                    )
+                  : const SizedBox.shrink(),
+            ),
+            SizedBox(
+              width: MediaQuery.of(context).size.width,
+              height: MediaQuery.of(context).size.height,
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton(
+                      onPressed: launchNativeWhiteboard,
+                      child: const Text('Open Native Whiteboard'),
+                    ),
+                    const SizedBox(width: 16),
+                    ElevatedButton(
+                      onPressed: () => androidViewWhiteboardVisible(context),
+                      child: const Text('Open Android View Whiteboard'),
+                    ),
+                  ],
                 ),
-            ],
-          ),
+              ),
+            ),
+          ],
         ),
       ),
     );
