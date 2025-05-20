@@ -1,11 +1,45 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/widgets.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
 MethodChannel? androidViewChannel;
+
+class MyPlatformView extends StatelessWidget {
+  const MyPlatformView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return PlatformViewLink(
+      viewType: 'custom_canvas_view',
+      surfaceFactory: (context, controller) {
+        return AndroidViewSurface(
+          controller: controller as AndroidViewController,
+          gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{},
+          hitTestBehavior: PlatformViewHitTestBehavior.opaque,
+        );
+      },
+      onCreatePlatformView: (params) {
+        final controller = PlatformViewsService.initSurfaceAndroidView(
+          id: params.id,
+          viewType: 'custom_canvas_view',
+          layoutDirection: TextDirection.ltr,
+          creationParams: const <String, dynamic>{},
+          creationParamsCodec: const StandardMessageCodec(),
+        );
+        controller.addOnPlatformViewCreatedListener(params.onPlatformViewCreated);
+        controller.create();
+        return controller;
+      },
+    );
+  }
+}
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
@@ -17,6 +51,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   static const MethodChannel _channel = MethodChannel('com.example.lango_ha/native');
   bool isAndroidViewWhiteboardVisible = false;
+  bool isPlatformViewLinkWhiteboardVisible = false;
 
   Future<void> launchNativeWhiteboard() async {
     try {
@@ -29,6 +64,18 @@ class _MyAppState extends State<MyApp> {
   void androidViewWhiteboardVisible(BuildContext context) {
     setState(() {
       isAndroidViewWhiteboardVisible = !isAndroidViewWhiteboardVisible;
+      if (isAndroidViewWhiteboardVisible) {
+        isPlatformViewLinkWhiteboardVisible = false;
+      }
+    });
+  }
+
+  void platformViewLinkWhiteboardVisible(BuildContext context) {
+    setState(() {
+      isPlatformViewLinkWhiteboardVisible = !isPlatformViewLinkWhiteboardVisible;
+      if (isPlatformViewLinkWhiteboardVisible) {
+        isAndroidViewWhiteboardVisible = false;
+      }
     });
   }
 
@@ -61,7 +108,9 @@ class _MyAppState extends State<MyApp> {
                         // androidViewChannel?.setMethodCallHandler(_handleMethodCall);
                       },
                     )
-                  : const SizedBox.shrink(),
+                  : isPlatformViewLinkWhiteboardVisible
+                      ? const MyPlatformView()
+                      : const SizedBox.shrink(),
             ),
             SizedBox(
               width: MediaQuery.of(context).size.width,
@@ -80,6 +129,11 @@ class _MyAppState extends State<MyApp> {
                     ElevatedButton(
                       onPressed: () => androidViewWhiteboardVisible(context),
                       child: Text('Open Android View Whiteboard ${isAndroidViewWhiteboardVisible ? 'Visible' : 'Hidden'}'),
+                    ),
+                    const SizedBox(width: 16),
+                    ElevatedButton(
+                      onPressed: () => platformViewLinkWhiteboardVisible(context),
+                      child: Text('Open PlatformViewLink Whiteboard ${isPlatformViewLinkWhiteboardVisible ? 'Visible' : 'Hidden'}'),
                     ),
                   ],
                 ),
