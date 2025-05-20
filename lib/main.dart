@@ -25,6 +25,14 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
+  void openAndroidViewWhiteboard(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const AndroidViewWhiteboardPage(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -35,9 +43,18 @@ class _MyAppState extends State<MyApp> {
       ),
       home: Scaffold(
         body: Center(
-          child: ElevatedButton(
-            onPressed: launchNativeWhiteboard,
-            child: const Text('Open Native Whiteboard'),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ElevatedButton(
+                onPressed: launchNativeWhiteboard,
+                child: const Text('Open Native Whiteboard'),
+              ),
+              ElevatedButton(
+                onPressed: () => openAndroidViewWhiteboard(context),
+                child: const Text('Open Android View Whiteboard'),
+              ),
+            ],
           ),
         ),
       ),
@@ -45,4 +62,18 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
+class AndroidViewWhiteboardPage extends StatelessWidget {
+  const AndroidViewWhiteboardPage({super.key});
 
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Android View Whiteboard')),
+      body: const AndroidView(
+        viewType: 'custom_canvas_view',
+        creationParams: {},
+        creationParamsCodec: StandardMessageCodec(),
+      ),
+    );
+  }
+}
