@@ -36,8 +36,8 @@ class _MyAppState extends State<MyApp> {
           creationParamsCodec: StandardMessageCodec(),
           onPlatformViewCreated: (int id) {
             print("[LANGOHA][onPlatformViewCreated] Trying to create Platform Channel");
-            androidViewChannel = MethodChannel('custom_canvas_view_$id');
-            androidViewChannel?.setMethodCallHandler(_handleMethodCall);
+            // androidViewChannel = MethodChannel('custom_canvas_view_$id');
+            // androidViewChannel?.setMethodCallHandler(_handleMethodCall);
           },
         ),
       ),
