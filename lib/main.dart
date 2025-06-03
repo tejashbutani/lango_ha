@@ -52,6 +52,7 @@ class _MyAppState extends State<MyApp> {
   static const MethodChannel _channel = MethodChannel('com.example.lango_ha/native');
   bool isAndroidViewWhiteboardVisible = false;
   bool isPlatformViewLinkWhiteboardVisible = false;
+  bool isAndroidViewSurfaceVisible = false;
 
   Future<void> launchNativeWhiteboard() async {
     try {
@@ -66,6 +67,7 @@ class _MyAppState extends State<MyApp> {
       isAndroidViewWhiteboardVisible = !isAndroidViewWhiteboardVisible;
       if (isAndroidViewWhiteboardVisible) {
         isPlatformViewLinkWhiteboardVisible = false;
+        isAndroidViewSurfaceVisible = false;
       }
     });
   }
@@ -75,6 +77,17 @@ class _MyAppState extends State<MyApp> {
       isPlatformViewLinkWhiteboardVisible = !isPlatformViewLinkWhiteboardVisible;
       if (isPlatformViewLinkWhiteboardVisible) {
         isAndroidViewWhiteboardVisible = false;
+        isAndroidViewSurfaceVisible = false;
+      }
+    });
+  }
+
+  void androidViewSurfaceVisible(BuildContext context) {
+    setState(() {
+      isAndroidViewSurfaceVisible = !isAndroidViewSurfaceVisible;
+      if (isAndroidViewSurfaceVisible) {
+        isAndroidViewWhiteboardVisible = false;
+        isPlatformViewLinkWhiteboardVisible = false;
       }
     });
   }
@@ -104,13 +117,33 @@ class _MyAppState extends State<MyApp> {
                       creationParamsCodec: const StandardMessageCodec(),
                       onPlatformViewCreated: (int id) {
                         print("[LANGOHA][onPlatformViewCreated] Trying to create Platform Channel");
-                        // androidViewChannel = MethodChannel('custom_canvas_view_$id');
-                        // androidViewChannel?.setMethodCallHandler(_handleMethodCall);
                       },
                     )
                   : isPlatformViewLinkWhiteboardVisible
                       ? const MyPlatformView()
-                      : const SizedBox.shrink(),
+                      : isAndroidViewSurfaceVisible
+                          ? PlatformViewLink(
+                              viewType: 'custom_canvas_view',
+                              surfaceFactory: (context, controller) {
+                                return AndroidViewSurface(
+                                  controller: controller as AndroidViewController,
+                                  gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{},
+                                  hitTestBehavior: PlatformViewHitTestBehavior.opaque,
+                                );
+                              },
+                              onCreatePlatformView: (params) {
+                                return PlatformViewsService.initSurfaceAndroidView(
+                                  id: params.id,
+                                  viewType: 'custom_canvas_view',
+                                  layoutDirection: TextDirection.ltr,
+                                  creationParams: const {},
+                                  creationParamsCodec: const StandardMessageCodec(),
+                                )
+                                  ..addOnPlatformViewCreatedListener(params.onPlatformViewCreated)
+                                  ..create();
+                              },
+                            )
+                          : const SizedBox.shrink(),
             ),
             SizedBox(
               width: MediaQuery.of(context).size.width,
@@ -134,6 +167,11 @@ class _MyAppState extends State<MyApp> {
                     ElevatedButton(
                       onPressed: () => platformViewLinkWhiteboardVisible(context),
                       child: Text('Open PlatformViewLink Whiteboard ${isPlatformViewLinkWhiteboardVisible ? 'Visible' : 'Hidden'}'),
+                    ),
+                    const SizedBox(width: 16),
+                    ElevatedButton(
+                      onPressed: () => androidViewSurfaceVisible(context),
+                      child: Text('Open AndroidViewSurface Whiteboard ${isAndroidViewSurfaceVisible ? 'Visible' : 'Hidden'}'),
                     ),
                   ],
                 ),
