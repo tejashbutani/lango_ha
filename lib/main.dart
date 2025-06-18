@@ -105,8 +105,8 @@ class _MyAppState extends State<MyApp> {
           alignment: Alignment.center,
           children: [
             Container(
-              width: MediaQuery.of(context).size.width * 0.8,
-              height: MediaQuery.of(context).size.height * 0.8,
+              width: MediaQuery.of(context).size.width,
+              height: MediaQuery.of(context).size.height,
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.blue),
               ),
