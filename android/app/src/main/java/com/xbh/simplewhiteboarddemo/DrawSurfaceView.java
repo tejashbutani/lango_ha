@@ -352,7 +352,7 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
             if (canvas == null) return;
             
             // Clear the canvas with transparent color to prevent burn-in
-            canvas.drawColor(Color.TRANSPARENT, android.graphics.PorterDuff.Mode.CLEAR);
+           // canvas.drawColor(Color.TRANSPARENT, android.graphics.PorterDuff.Mode.CLEAR);
             
             if(mBgBitmap!=null)
                 canvas.drawBitmap(mBgBitmap, null, mScreenRect, null);
