@@ -20,6 +20,9 @@ import android.view.MotionEvent;
 import android.view.SurfaceControl;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.TextureView;
+import android.view.Surface;
+import android.graphics.SurfaceTexture;
 import android.view.View;
 import android.view.ViewTreeObserver;
 import android.view.WindowManager;
@@ -33,12 +36,12 @@ import java.util.List;
 /**
  * @author LANGO
  */
-public class DrawSurfaceView extends SurfaceView implements SurfaceHolder.Callback {
+public class DrawSurfaceView extends TextureView implements TextureView.SurfaceTextureListener {
     private final String TAG = DrawSurfaceView.class.getSimpleName();
     private final Handler handler = new Handler();
     private ViewTreeObserver.OnGlobalLayoutListener mPreDrawListener;
 
-    private SurfaceHolder mSurfaceHolder = null;
+    private Surface mSurface = null;
     private Paint mPaint = null;
     private Rect mScreenRect = null;
     private Bitmap mBgBitmap = null;
@@ -74,9 +77,8 @@ public class DrawSurfaceView extends SurfaceView implements SurfaceHolder.Callba
 
     private void initializeView() {
         Log.d(TAG, "DrawSurfaceView");
-        mSurfaceHolder = this.getHolder();
-        mSurfaceHolder.addCallback(this);
-        mSurfaceHolder.setFormat(PixelFormat.TRANSPARENT);
+        this.setSurfaceTextureListener(this);
+        this.setOpaque(false);
         mScreenRect = new Rect(0, 0, Util.SCREEN_WIDTH, Util.SCREEN_HEIGHT);
 
         //创建背景图
@@ -135,26 +137,25 @@ public class DrawSurfaceView extends SurfaceView implements SurfaceHolder.Callba
     }
 
     @Override
-    public void surfaceCreated(SurfaceHolder holder) {
-        Log.d(TAG, "surfaceCreated");
+    public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+        Log.d(TAG, "onSurfaceTextureAvailable");
+        mSurface = new Surface(surface);
+        
         //主进程判断，关闭加速，防止异常时未关闭加速
-
         AccelerateDraw.getInstance().accelerateDeInit();
         AccelerateDraw.getInstance().accelerateInit(Util.SCREEN_WIDTH, Util.SCREEN_HEIGHT);
         AccelerateDraw.getInstance().stopAndClearAccelerate();
 
-        /*if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            SurfaceControl.Transaction transaction = new SurfaceControl.Transaction();
-            SurfaceControl  surfaceControl = getSurfaceControl();
-            Reflect.on(transaction).call("setTrustedOverlay",surfaceControl, true).call("apply");
-
-//            SurfaceControl transaction = new SurfaceControl.Builder().setName(Constants.DRAW_SURFACE_NAME).build();
-        }*/
+        //适配多窗
+        Util.OVERRIDE_SCREEN_WIDTH = width;
+        Util.OVERRIDE_SCREEN_HEIGHT = height;
+        updateViewRect();
+        requestCacheDraw();
     }
 
     @Override
-    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-        Log.d(TAG, "surfaceChanged width = " + width + " height=" + height);
+    public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+        Log.d(TAG, "onSurfaceTextureSizeChanged width = " + width + " height=" + height);
 
         //适配多窗
         Util.OVERRIDE_SCREEN_WIDTH = width;
@@ -165,10 +166,20 @@ public class DrawSurfaceView extends SurfaceView implements SurfaceHolder.Callba
     }
 
     @Override
-    public void surfaceDestroyed(SurfaceHolder holder) {
-        Log.d(TAG, "surfaceDestroyed");
+    public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+        Log.d(TAG, "onSurfaceTextureDestroyed");
         mAcd.stopAndClearAccelerate();
         mAcd.accelerateDeInit();
+        if (mSurface != null) {
+            mSurface.release();
+            mSurface = null;
+        }
+        return true;
+    }
+
+    @Override
+    public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+        // This callback is called when the surface texture has been updated
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -330,19 +341,24 @@ public class DrawSurfaceView extends SurfaceView implements SurfaceHolder.Callba
 
     //刷新总个屏幕
     public void requestCacheDraw() {
-        synchronized (mSurfaceHolder) {
-
+        if (mSurface == null) return;
+        
+        synchronized (this) {
             //绘制之前，将书写图层叠加到 成熟图层
             mCacheCanvas.drawBitmap(mDrawBitmap, null, mScreenRect, null);
             mDrawBitmap.eraseColor(Color.TRANSPARENT);
 
-            Canvas canvas = mSurfaceHolder.lockHardwareCanvas();
+            Canvas canvas = mSurface.lockCanvas(null);
             if (canvas == null) return;
+            
+            // Clear the canvas with transparent color to prevent burn-in
+            canvas.drawColor(Color.TRANSPARENT, android.graphics.PorterDuff.Mode.CLEAR);
+            
             if(mBgBitmap!=null)
                 canvas.drawBitmap(mBgBitmap, null, mScreenRect, null);
             canvas.drawBitmap(mCacheBitmap, null, mScreenRect, null);
 
-            mSurfaceHolder.unlockCanvasAndPost(canvas);
+            mSurface.unlockCanvasAndPost(canvas);
         }
     }
 
