@@ -24,55 +24,63 @@ class _DrawingScreen2State extends State<DrawingScreen2> {
           backgroundColor: Colors.grey.shade600,
           body: Stack(
             children: [
-              if (isPenEnabled)
-                AndroidView(
-                  viewType: 'custom_canvas_view',
-                  creationParams: {
-                    'color': Colors.white.value,
-                    'width': 3,
-                    "doublePenModeEnabled": false,
-                    "doublePenColor1": Colors.red.value,
-                    "doublePenColor2": Colors.blue.value,
-                    "fingerAsEraserEnabled": false,
-                    // "fingerAsEraserEnabled": true,
-                    "fistAsEraserEnabled": false,
-                    "fistAsEraserThreshold": 1000,
-                    "fingerAsEraserThreshold": 1000,
-                    "doublePenThreshold": 1000,
-                  },
-                  creationParamsCodec: const StandardMessageCodec(),
-                  onPlatformViewCreated: (int id) {
-                    print("Trying to create Platform Channel");
-                    // if (!_androidViewCreated) {
-                    print("Trying to create Platform Channel");
-                    androidViewChannel = MethodChannel('custom_canvas_view_$id');
-                    androidViewChannel?.setMethodCallHandler(_handleMethodCall);
-                    // _androidViewCreated = true;
-                    // }
-                  },
+              GestureDetector(
+                onPanStart: (details) {
+                  setState(() {
+                    strokes.add(Stroke(points: [details.localPosition]));
+                  });
+                },
+                onPanUpdate: (details) {
+                  setState(() {
+                    if (strokes.isNotEmpty) {
+                      strokes.last.points.add(details.localPosition);
+                    }
+                  });
+                },
+                onPanEnd: (details) {
+                  // Stroke is complete
+                },
+                child: CustomPaint(
+                  painter: ToolsPainter(
+                    strokes: strokes,
+                    androidViewSize: androidViewSize,
+                  ),
+                  size: const Size(3860, 2160),
                 ),
-                GestureDetector(
-                  onPanStart: (details) {
-                    setState(() {
-                      strokes.add(Stroke(points: [details.localPosition]));
-                    });
-                  },
-                  onPanUpdate: (details) {
-                    setState(() {
-                      if (strokes.isNotEmpty) {
-                        strokes.last.points.add(details.localPosition);
-                      }
-                    });
-                  },
-                  onPanEnd: (details) {
-                    // Stroke is complete
-                  },
-                  child: CustomPaint(
-                    painter: ToolsPainter(
-                      strokes: strokes,
-                      androidViewSize: androidViewSize,
-                    ),
-                    size: const Size(3860, 2160),
+              ),
+              if (isPenEnabled)
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.white, width: 1),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: AndroidView(
+                    viewType: 'custom_canvas_view',
+                    creationParams: {
+                      'color': Colors.white.value,
+                      'width': 3,
+                      "doublePenModeEnabled": false,
+                      "doublePenColor1": Colors.red.value,
+                      "doublePenColor2": Colors.blue.value,
+                      "fingerAsEraserEnabled": false,
+                      // "fingerAsEraserEnabled": true,
+                      "fistAsEraserEnabled": false,
+                      "fistAsEraserThreshold": 1000,
+                      "fingerAsEraserThreshold": 1000,
+                      "doublePenThreshold": 1000,
+                    },
+                    creationParamsCodec: const StandardMessageCodec(),
+                    onPlatformViewCreated: (int id) {
+                      print("Trying to create Platform Channel");
+                      // if (!_androidViewCreated) {
+                      print("Trying to create Platform Channel");
+                      androidViewChannel = MethodChannel('custom_canvas_view_$id');
+                      androidViewChannel?.setMethodCallHandler(_handleMethodCall);
+                      // _androidViewCreated = true;
+                      // }
+                    },
                   ),
                 ),
             ],
