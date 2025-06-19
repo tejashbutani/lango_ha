@@ -83,40 +83,41 @@ class _DrawingScreen2State extends State<DrawingScreen2> {
                     },
                   ),
                 ),
-            ],
-          ),
-          floatingActionButton: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(width: 20),
-              FloatingActionButton(
-                onPressed: () {
-                  setState(() {
-                    isPenEnabled = !isPenEnabled;
-                  });
-                },
-                backgroundColor: isPenEnabled ? Colors.black : Colors.white,
-                child: Icon(
-                  isPenEnabled ? Icons.edit : Icons.edit_off,
-                  color: isPenEnabled ? Colors.red : Colors.red,
+                 Positioned(
+                bottom: 40,
+                right: 120,
+                child: FloatingActionButton(
+                  onPressed: () {
+                    setState(() {
+                      isPenEnabled = !isPenEnabled;
+                    });
+                  },
+                  backgroundColor: isPenEnabled ? Colors.black : Colors.white,
+                  child: Icon(
+                    isPenEnabled ? Icons.edit : Icons.edit_off,
+                    color: isPenEnabled ? Colors.red : Colors.red,
+                  ),
                 ),
               ),
-              const SizedBox(width: 20),
-              FloatingActionButton(
-                onPressed: () {
-                  setState(() {
-                    strokes.clear();
-                  });
-                },
-                backgroundColor: Colors.white,
-                child: const Icon(
-                  Icons.delete_outline,
-                  color: Colors.red,
+              Positioned(
+                bottom: 40,
+                right: 40,
+                child: FloatingActionButton(
+                  onPressed: () {
+                    setState(() {
+                      strokes.clear();
+                    });
+                  },
+                  backgroundColor: Colors.white,
+                  child: const Icon(
+                    Icons.delete_outline,
+                    color: Colors.red,
+                  ),
                 ),
               ),
             ],
           ),
-        );
+         );
       },
     );
   }
