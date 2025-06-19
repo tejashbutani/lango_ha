@@ -25,7 +25,13 @@ class _DrawingScreenState extends State<DrawingScreen> {
           backgroundColor: Colors.grey.shade600,
           body: Stack(
             children: [
-              
+               CustomPaint(
+                painter: ToolsPainter(
+                  strokes: strokes,
+                  androidViewSize: androidViewSize,
+                ),
+                size: const Size(3860, 2160),
+              ),
               if (isPenEnabled)
                 AndroidView(
                   viewType: 'custom_canvas_view',
@@ -53,13 +59,6 @@ class _DrawingScreenState extends State<DrawingScreen> {
                     // }
                   },
                 ),
-                CustomPaint(
-                painter: ToolsPainter(
-                  strokes: strokes,
-                  androidViewSize: androidViewSize,
-                ),
-                size: const Size(3860, 2160),
-              ),
               Positioned(
                 bottom: 40,
                 right: 120,
