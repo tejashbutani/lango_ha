@@ -393,7 +393,7 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
     }
 
 
-    //刷新总个屏幕
+    //刷新总个屏幕 This was causing the issue of zig-zag border
     public void requestCacheDraw() {
         // synchronized (this) {
 
