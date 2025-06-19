@@ -385,8 +385,25 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
         if (rect != null) {
             int left = mViewRect.left + rect.left;
             int top = mViewRect.top + rect.top;
+            
+            // Create a composite bitmap that includes both cache and current drawing
+            Bitmap compositeBitmap = Bitmap.createBitmap(mDrawBitmap.getWidth(), mDrawBitmap.getHeight(), Bitmap.Config.ARGB_8888);
+            Canvas compositeCanvas = new Canvas(compositeBitmap);
+            
+            // Draw the cache bitmap first
+            compositeCanvas.drawBitmap(mCacheBitmap, 0, 0, null);
+            
+            // Then draw the current drawing on top
+            Paint overlayPaint = new Paint();
+            overlayPaint.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_OVER));
+            overlayPaint.setAntiAlias(true);
+            compositeCanvas.drawBitmap(mDrawBitmap, 0, 0, overlayPaint);
+            
             mAcd.refreshAccelerateDrawV2(left, top, rect.width(), rect.height(),
-                    mDrawBitmap, rect.left, rect.top, false);
+                    compositeBitmap, rect.left, rect.top, false);
+            
+            // Clean up
+            compositeBitmap.recycle();
         }
     }
 
@@ -403,7 +420,11 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
             blendPaint.setFilterBitmap(true);
             
             mCacheCanvas.drawBitmap(mDrawBitmap, null, mScreenRect, blendPaint);
-            mDrawBitmap.eraseColor(Color.TRANSPARENT);
+            
+            // Only clear draw bitmap if we're not in the middle of drawing
+            if (mPencilList.size() == 0) {
+                mDrawBitmap.eraseColor(Color.TRANSPARENT);
+            }
 
             Canvas canvas = null;
             try {
@@ -412,13 +433,32 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
                     // Clear canvas properly without artifacts
                     canvas.drawColor(Color.TRANSPARENT, android.graphics.PorterDuff.Mode.CLEAR);
                     
-                    // Draw the cache bitmap with proper blending
+                    // Create composite view for rendering
+                    Bitmap compositeBitmap = Bitmap.createBitmap(mCacheBitmap.getWidth(), mCacheBitmap.getHeight(), Bitmap.Config.ARGB_8888);
+                    Canvas compositeCanvas = new Canvas(compositeBitmap);
+                    
+                    // Draw cache first
+                    compositeCanvas.drawBitmap(mCacheBitmap, 0, 0, null);
+                    
+                    // Draw current drawing on top if exists
+                    if (mPencilList.size() > 0) {
+                        Paint overlayPaint = new Paint();
+                        overlayPaint.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_OVER));
+                        overlayPaint.setAntiAlias(true);
+                        overlayPaint.setFilterBitmap(true);
+                        compositeCanvas.drawBitmap(mDrawBitmap, 0, 0, overlayPaint);
+                    }
+                    
+                    // Draw the composite bitmap with proper blending
                     Paint surfacePaint = new Paint();
                     surfacePaint.setAntiAlias(true);
                     surfacePaint.setFilterBitmap(true);
                     surfacePaint.setDither(true);
                     
-                    canvas.drawBitmap(mCacheBitmap, null, mScreenRect, surfacePaint);
+                    canvas.drawBitmap(compositeBitmap, null, mScreenRect, surfacePaint);
+                    
+                    // Clean up
+                    compositeBitmap.recycle();
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Error drawing to surface", e);
