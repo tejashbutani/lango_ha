@@ -118,7 +118,10 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
         mPaint.setStrokeJoin(Paint.Join.ROUND);
         mPaint.setDither(true);
         mPaint.setAntiAlias(true);
+        mPaint.setFilterBitmap(true);
         mPaint.setPathEffect(new android.graphics.CornerPathEffect(40f));
+        // Set proper blending mode for stroke overlays
+        mPaint.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_OVER));
 
         this.doublePenEnabled = doublePenEnabled;
         this.fistAsEraserEnabled = fistAsEraserEnabled;
@@ -393,15 +396,29 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
         }
         
         synchronized (mSurface) {
-            mCacheCanvas.drawBitmap(mDrawBitmap, null, mScreenRect, null);
+            // Use SRC_OVER for proper blending when combining bitmaps
+            Paint blendPaint = new Paint();
+            blendPaint.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_OVER));
+            blendPaint.setAntiAlias(true);
+            blendPaint.setFilterBitmap(true);
+            
+            mCacheCanvas.drawBitmap(mDrawBitmap, null, mScreenRect, blendPaint);
             mDrawBitmap.eraseColor(Color.TRANSPARENT);
 
             Canvas canvas = null;
             try {
                 canvas = mSurface.lockCanvas(null);
                 if (canvas != null) {
+                    // Clear canvas properly without artifacts
                     canvas.drawColor(Color.TRANSPARENT, android.graphics.PorterDuff.Mode.CLEAR);
-                    canvas.drawBitmap(mCacheBitmap, null, mScreenRect, null);
+                    
+                    // Draw the cache bitmap with proper blending
+                    Paint surfacePaint = new Paint();
+                    surfacePaint.setAntiAlias(true);
+                    surfacePaint.setFilterBitmap(true);
+                    surfacePaint.setDither(true);
+                    
+                    canvas.drawBitmap(mCacheBitmap, null, mScreenRect, surfacePaint);
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Error drawing to surface", e);
@@ -471,9 +488,15 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
                 mPaint.setStrokeJoin(Paint.Join.ROUND);
                 mPaint.setStyle(Paint.Style.STROKE);
                 mPaint.setPathEffect(new android.graphics.CornerPathEffect(40f));
-                mPaint.setXfermode(null);
+                // Keep SRC_OVER mode for proper stroke blending instead of null
+                mPaint.setXfermode(new android.graphics.PorterDuffXfermode(
+                        android.graphics.PorterDuff.Mode.SRC_OVER));
                 mPaint.setAlpha(255);
             }
+            // Ensure consistent rendering properties
+            mPaint.setAntiAlias(true);
+            mPaint.setFilterBitmap(true);
+            mPaint.setDither(true);
         }
     }
 
