@@ -5,37 +5,27 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Matrix;
 import android.graphics.Paint;
-import android.graphics.Path;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
-import android.graphics.RectF;
-import android.graphics.Region;
+import android.graphics.SurfaceTexture;
 import android.os.Handler;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.util.SparseArray;
 import android.view.MotionEvent;
-import android.view.SurfaceControl;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
-import android.view.TextureView;
 import android.view.Surface;
-import android.graphics.SurfaceTexture;
-import android.view.View;
+import android.view.TextureView;
 import android.view.ViewTreeObserver;
-import android.view.WindowManager;
+import io.flutter.plugin.common.MethodChannel;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import android.graphics.PointF;
 
-import com.example.lango_ha.R;
 import com.xbh.whiteboard.AccelerateDraw;
 
-import java.lang.reflect.Method;
-import java.util.List;
-
-/**
- * @author LANGO
- */
 public class DrawSurfaceView extends TextureView implements TextureView.SurfaceTextureListener {
     private final String TAG = DrawSurfaceView.class.getSimpleName();
     private final Handler handler = new Handler();
@@ -44,56 +34,100 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
     private Surface mSurface = null;
     private Paint mPaint = null;
     private Rect mScreenRect = null;
-    private Bitmap mBgBitmap = null;
     private Bitmap mCacheBitmap = null;//成熟区，保存的是已经绘制的笔迹
-    private Bitmap mDrawBitmap = null;//刷新区，保存的是书写过程传给加速库的笔迹或板擦
+    private Bitmap mDrawBitmap = null;//刷新区，保存的是书写过程传给加速库的笔迹
     private Canvas mCacheCanvas = null;
     private Canvas mDrawCanvas = null;//书写画布
 
-    private AEraser mFingerEraser;
-    private AEraser mGestureEraser;
-
-    private int preEraserPointId = -1;
     private SparseArray<IDrawer> mPencilList = new SparseArray<>();
     private static final Object PEN_LOCKER = new Object();
     private AccelerateDraw mAcd = AccelerateDraw.getInstance();
 
-    private boolean isGetEventDraw = false;
-
-    protected Rect drawSkipBoundsRect;
-    protected List<Path> drawSkipPathList;
     private Rect mViewRect = new Rect();
+    private MethodChannel methodChannel;
+    private List<PointF> currentStrokePoints = new ArrayList<>();
+    private boolean isDashed = false;
+    private static final float DASH_LENGTH = 30f;
+    private static final float GAP_LENGTH = 20f;
+    private static final int defaultHighlighterAlpha = 75;
 
+    // TODO: for double pen, finger as eraser, fist as eraser mode
+    private float doublePenThreshold;
+    private float fingerAsEraserThreshold;
+    private float fistAsEraserThreshold;
+
+    private boolean doublePenEnabled;
+    private boolean fingerAsEraserEnabled;
+    private boolean fistAsEraserEnabled;
+
+    private int pen1Color;
+    private int pen2Color;
+    private int lastColor;
+
+    private boolean isErasing = false;
+    private Map<Integer, List<PointF>> mStrokePointsMap = new HashMap<>();
+    private Map<Integer, Float> mLastXMap = new HashMap<>();
+    private Map<Integer, Float> mLastYMap = new HashMap<>();
 
     public DrawSurfaceView(Context context) {
         super(context);
-        initializeView();
+        // Use default values for initialization
+        init(context, Color.BLACK, 5.0f, 0.5f, 0.3f, 0.4f, false, false, false, Color.BLACK, Color.BLUE);
     }
 
     public DrawSurfaceView(Context context, AttributeSet attrs) {
         super(context, attrs);
-        initializeView();
+        // Use default values for initialization
+        init(context, Color.BLACK, 5.0f, 0.5f, 0.3f, 0.4f, false, false, false, Color.BLACK, Color.BLUE);
     }
 
-    private void initializeView() {
+    public DrawSurfaceView(Context context, AttributeSet attrs, int defStyle) {
+        super(context, attrs, defStyle);
+        // Use default values for initialization
+        init(context, Color.BLACK, 5.0f, 0.5f, 0.3f, 0.4f, false, false, false, Color.BLACK, Color.BLUE);
+    }
+
+    public DrawSurfaceView(Context context, int initialColor, float initialWidth, float doublePenThreshold, float fingerAsEraserThreshold, float fistAsEraserThreshold, boolean fingerAsEraserEnabled, boolean fistAsEraserEnabled, boolean doublePenEnabled, int pen1Color, int pen2Color  ) {
+        super(context);
+        init(context, initialColor, initialWidth, doublePenThreshold, fingerAsEraserThreshold, fistAsEraserThreshold, fingerAsEraserEnabled, fistAsEraserEnabled, doublePenEnabled, pen1Color, pen2Color);
+    }
+
+    private void init(Context context, int initialColor, float initialWidth, float doublePenThreshold, float fingerAsEraserThreshold, float fistAsEraserThreshold, boolean fingerAsEraserEnabled, boolean fistAsEraserEnabled, boolean doublePenEnabled, int pen1Color, int pen2Color) {
         Log.d(TAG, "DrawSurfaceView");
-        this.setSurfaceTextureListener(this);
-        this.setOpaque(false);
+        setSurfaceTextureListener(this);
+        setOpaque(false);
         mScreenRect = new Rect(0, 0, Util.SCREEN_WIDTH, Util.SCREEN_HEIGHT);
 
-        //创建背景图
-        mBgBitmap = Util.returnBgBitmap(this.getContext(), R.mipmap.canvas_bg_0, Util.SCREEN_WIDTH, Util.SCREEN_HEIGHT);
-        //创建成熟区画布
+        // Create cache bitmap
         mCacheBitmap = Bitmap.createBitmap(Util.SCREEN_WIDTH, Util.SCREEN_HEIGHT, Bitmap.Config.ARGB_8888);
         mCacheBitmap.eraseColor(Color.TRANSPARENT);
         mCacheCanvas = new Canvas(mCacheBitmap);
 
-        //创建书写区画布
+        // Create drawing bitmap
         mDrawBitmap = Bitmap.createBitmap(Util.SCREEN_WIDTH, Util.SCREEN_HEIGHT, Bitmap.Config.ARGB_8888);
         mDrawBitmap.eraseColor(Color.TRANSPARENT);
         mDrawCanvas = new Canvas(mDrawBitmap);
 
-        drawSkipBoundsRect = new Rect();
+        mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        mPaint.setColor(initialColor);
+        lastColor = initialColor;
+        float density = getResources().getDisplayMetrics().density;
+        mPaint.setStrokeWidth(initialWidth * density);
+        mPaint.setStyle(Paint.Style.STROKE);
+        mPaint.setStrokeCap(Paint.Cap.ROUND);
+        mPaint.setStrokeJoin(Paint.Join.ROUND);
+        mPaint.setDither(true);
+        mPaint.setAntiAlias(true);
+        mPaint.setPathEffect(new android.graphics.CornerPathEffect(40f));
+
+        this.doublePenEnabled = doublePenEnabled;
+        this.fistAsEraserEnabled = fistAsEraserEnabled;
+        this.fingerAsEraserEnabled = fingerAsEraserEnabled;
+        this.doublePenThreshold = doublePenThreshold;
+        this.fingerAsEraserThreshold = fingerAsEraserThreshold;
+        this.fistAsEraserThreshold = fistAsEraserThreshold;
+        this.pen1Color = pen1Color;
+        this.pen2Color = pen2Color;
 
         final Runnable runnable = new Runnable() {
             @Override
@@ -102,7 +136,6 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
             }
         };
 
-        // PreDraw监听，用于窗口位置大小改变后刷新画布参数
         mPreDrawListener = new ViewTreeObserver.OnGlobalLayoutListener() {
             @Override
             public void onGlobalLayout() {
@@ -110,6 +143,9 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
                 handler.postDelayed(runnable, 100);
             }
         };
+
+        // Add the layout listener
+        getViewTreeObserver().addOnGlobalLayoutListener(mPreDrawListener);
     }
 
     private void onPreDraw() {
@@ -123,16 +159,20 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        if (mPreDrawListener != null) {
-            getViewTreeObserver().addOnGlobalLayoutListener(mPreDrawListener);
-        }
+        getViewTreeObserver().addOnGlobalLayoutListener(mPreDrawListener);
     }
 
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
+        // Remove the layout listener when the view is detached
         if (mPreDrawListener != null) {
             getViewTreeObserver().removeOnGlobalLayoutListener(mPreDrawListener);
+            mPreDrawListener = null;
+        }
+        // Clean up handler
+        if (handler != null) {
+            handler.removeCallbacksAndMessages(null);
         }
     }
 
@@ -140,28 +180,17 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
     public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
         Log.d(TAG, "onSurfaceTextureAvailable");
         mSurface = new Surface(surface);
-        
-        //主进程判断，关闭加速，防止异常时未关闭加速
         AccelerateDraw.getInstance().accelerateDeInit();
         AccelerateDraw.getInstance().accelerateInit(Util.SCREEN_WIDTH, Util.SCREEN_HEIGHT);
         AccelerateDraw.getInstance().stopAndClearAccelerate();
-
-        //适配多窗
-        Util.OVERRIDE_SCREEN_WIDTH = width;
-        Util.OVERRIDE_SCREEN_HEIGHT = height;
-        updateViewRect();
-        requestCacheDraw();
     }
 
     @Override
     public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
         Log.d(TAG, "onSurfaceTextureSizeChanged width = " + width + " height=" + height);
-
-        //适配多窗
         Util.OVERRIDE_SCREEN_WIDTH = width;
         Util.OVERRIDE_SCREEN_HEIGHT = height;
         updateViewRect();
-
         requestCacheDraw();
     }
 
@@ -179,15 +208,13 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
 
     @Override
     public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-        // This callback is called when the surface texture has been updated
+        // This method is called when the surface texture is updated
+        // Usually we don't need to do anything here for drawing applications
     }
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        int toolType=event.getToolType(0);
-        boolean isStylus=toolType==MotionEvent.TOOL_TYPE_STYLUS;
-
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
             case MotionEvent.ACTION_POINTER_DOWN:
@@ -209,59 +236,72 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
     }
 
     private void MotionEventTouchDown(MotionEvent event) {
-        int curPointerIndex = event.getActionIndex();
-        int curPointerId = event.getPointerId(curPointerIndex);
-        float x = event.getX(curPointerIndex);
-        float y = event.getY(curPointerIndex);
-        float width = event.getTouchMajor(curPointerIndex);
+        int pointerCount = event.getPointerCount();
+        int actionIndex = event.getActionIndex();
+        int pointerId = event.getPointerId(actionIndex);
+        int maskedAction = event.getActionMasked();
 
-        if (Util.getMode() == Util.PEN) {
-            touchDown(curPointerId, x, y);
-        } else {
-            if (event.getPointerCount() == 1) {
-                touchDown(curPointerId, x, y);
-                IDrawer drawer = toCreateDrawer(curPointerId);
-                drawer.touchDown(x, y);
-            }
-            udateEraserIcon(curPointerId, width);
+        Log.d(TAG, "event.getSize()" + event.getSize());
+        Log.d(TAG, "fingerAsEraserThreshold" + fingerAsEraserThreshold);
+        Log.d(TAG, "fingerAsEraserEnabled" + fingerAsEraserEnabled);
+
+        if(((event.getSize() > fingerAsEraserThreshold) && fingerAsEraserEnabled) || ((event.getSize() > fistAsEraserThreshold) && fistAsEraserEnabled)) {
+            Log.d(TAG, "event.getSize()" + event.getSize());
+            Log.d(TAG, "fingerAsEraserThreshold" + fingerAsEraserThreshold);
+            Log.d(TAG, "fingerAsEraserEnabled" + fingerAsEraserEnabled);
+
+            isErasing = true;
+            Log.d(TAG, "ErasingModeOnAndroid" + isErasing);
+            clearCanvas();
         }
+
+        if(doublePenEnabled){
+            if(event.getSize()>doublePenThreshold){
+                mPaint.setColor(pen2Color);
+            } else {
+                mPaint.setColor(pen1Color);
+            }
+        } else {
+            //mPaint.setColor(lastColor);
+        }
+
+        float startX = event.getX(actionIndex);
+        float startY = event.getY(actionIndex);
+        touchDown(pointerId, startX, startY);
+
+        List<PointF> points = new ArrayList<>();
+        points.add(new PointF(startX, startY));
+        mStrokePointsMap.put(pointerId, points);
+
+        mLastXMap.put(pointerId, startX);
+        mLastYMap.put(pointerId, startY);
     }
 
-    //开始加速
     private void touchDown(int curPointerId, float x, float y) {
         IDrawer drawer = toCreateDrawer(curPointerId);
         mAcd.startAccelerateDraw();
         drawer.touchDown(x, y);
     }
 
-    //更新擦除板擦UI大小
-    private void udateEraserIcon(int curPointerId, float width) {
-        if (Util.getMode() == Util.PEN) {
+    private void MotionEventTouchMove(MotionEvent event) {
+        if(isErasing) {
             return;
         }
-        AEraser eraser = (AEraser) getDrawer(curPointerId);
-        if (width > eraser.getEraserWidth()) {
-            preEraserPointId = curPointerId;
-            eraser.setEraserWidthHeight(width);
-        }
-        eraser.updateEraserIcon();
-    }
 
-    private void MotionEventTouchMove(MotionEvent event) {
         int pointerCount = event.getPointerCount();
-        int curPointerIndex = 0;
         for (int i = 0; i < pointerCount; i++) {
-            if (Util.getMode() == Util.PEN || preEraserPointId == event.getPointerId(i)) {
-                curPointerIndex = i;
-            } else {
-                curPointerIndex = 0;
-            }
-            paintDraw(event.getPointerId(curPointerIndex), event.getX(curPointerIndex), event.getY(curPointerIndex));
-        }
-    }
+            int id = event.getPointerId(i);
+            float x = event.getX(i);
+            float y = event.getY(i);
 
-    private void touchMove(int curPointerId, float x, float y) {
-        paintDraw(curPointerId, x, y);
+            List<PointF> currentPoints = mStrokePointsMap.get(id);
+
+            paintDraw(event.getPointerId(i), event.getX(i), event.getY(i));
+
+            currentPoints.add(new PointF(x, y));
+            mLastXMap.put(id, event.getX(i));
+            mLastYMap.put(id, event.getY(i));
+        }
     }
 
     private void paintDraw(int curPointerId, float x, float y) {
@@ -272,24 +312,44 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
     }
 
     private void MotionEventTouchUp(MotionEvent event, boolean releaseAll) {
-        int curPointerIndex = 0;
-        if (Util.getMode() == Util.PEN || preEraserPointId == event.getPointerId(event.getActionIndex())) {
-            curPointerIndex = event.getActionIndex();
-        } else {
-            curPointerIndex = 0;
+        if(isErasing) {
+            isErasing = false;
+            return;
         }
-        touchUp(event.getPointerId(curPointerIndex), event.getX(curPointerIndex), event.getY(curPointerIndex), releaseAll);
+        int curPointerIndex = event.getActionIndex();
+        touchUp(event.getPointerId(curPointerIndex), event.getX(curPointerIndex),
+                event.getY(curPointerIndex), releaseAll);
     }
 
     private void touchUp(int curPointerId, float x, float y, boolean releaseAll) {
         synchronized (PEN_LOCKER) {
+            IDrawer drawer = getDrawer(curPointerId);
+            if (drawer != null && methodChannel != null) {
+                // Get the points from the drawer
+                List<PointF> points = mStrokePointsMap.get(curPointerId); // You'll need to add this method to IDrawer
+                Map<String, Object> strokeData = new HashMap<>();
+                List<Map<String, Double>> pointsList = new ArrayList<>();
+                float density = getResources().getDisplayMetrics().density;
+
+                for (PointF point : points) {
+                    Map<String, Double> pointMap = new HashMap<>();
+                    pointMap.put("x", (double) (point.x / density));
+                    pointMap.put("y", (double) (point.y / density));
+                    pointsList.add(pointMap);
+                }
+
+                strokeData.put("points", pointsList);
+                strokeData.put("color", mPaint.getColor());
+                strokeData.put("width", (double) (mPaint.getStrokeWidth() / density));
+
+                methodChannel.invokeMethod("onStrokeComplete", strokeData);
+            }
+
             paintUp(curPointerId, x, y);
-            //刷新总个界面
             if (releaseAll) {
-                preEraserPointId = -1;
-                clearAllDrawer();
+//               clearAllDrawer();
                 requestCacheDraw();
-                mAcd.stopAndClearAccelerate();
+                // mAcd.stopAndClearAccelerate();
             }
         }
     }
@@ -297,18 +357,11 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
     private void paintUp(int curPointerId, float x, float y) {
         IDrawer drawer = getDrawer(curPointerId);
         if (drawer != null) {
-            if (drawer.touchUp(x, y, this)) {
-                drawer.draw(this);
-            }
-            if (Util.getMode() == Util.PEN) {
-                mPencilList.remove(curPointerId);
-            }
+            drawer.touchUp(x, y, this);
+            mPencilList.remove(curPointerId);
         }
     }
 
-    /**
-     * 更新View可见区域
-     */
     public boolean updateViewRect() {
         int[] position = new int[2];
         getLocationOnScreen(position);
@@ -325,94 +378,46 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
         return true;
     }
 
-    //刷新书写内容
     public void refreshCache(Rect rect) {
         if (rect != null) {
-            /*针对多窗适配*/
             int left = mViewRect.left + rect.left;
             int top = mViewRect.top + rect.top;
-
-            //把 书写图层 传入加速库
             mAcd.refreshAccelerateDrawV2(left, top, rect.width(), rect.height(),
                     mDrawBitmap, rect.left, rect.top, false);
         }
     }
 
-
-    //刷新总个屏幕
     public void requestCacheDraw() {
-        if (mSurface == null) return;
+        if (mSurface == null || !mSurface.isValid()) {
+            return;
+        }
         
-        synchronized (this) {
-            //绘制之前，将书写图层叠加到 成熟图层
+        synchronized (mSurface) {
             mCacheCanvas.drawBitmap(mDrawBitmap, null, mScreenRect, null);
             mDrawBitmap.eraseColor(Color.TRANSPARENT);
 
-            Canvas canvas = mSurface.lockCanvas(null);
-            if (canvas == null) return;
-            
-            // Clear the canvas with transparent color to prevent burn-in
-           // canvas.drawColor(Color.TRANSPARENT, android.graphics.PorterDuff.Mode.CLEAR);
-            
-            if(mBgBitmap!=null)
-                canvas.drawBitmap(mBgBitmap, null, mScreenRect, null);
-            canvas.drawBitmap(mCacheBitmap, null, mScreenRect, null);
-
-            mSurface.unlockCanvasAndPost(canvas);
+            Canvas canvas = null;
+            try {
+                canvas = mSurface.lockCanvas(null);
+                if (canvas != null) {
+                    canvas.drawColor(Color.TRANSPARENT, android.graphics.PorterDuff.Mode.CLEAR);
+                    canvas.drawBitmap(mCacheBitmap, null, mScreenRect, null);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error drawing to surface", e);
+            } finally {
+                if (canvas != null) {
+                    mSurface.unlockCanvasAndPost(canvas);
+                }
+            }
         }
-    }
-
-    //刷新书写画布
-    public void cleanDrawCanvas() {
-        Log.d(TAG, "cleanDrawCanvas");
-        mDrawBitmap.eraseColor(Color.TRANSPARENT);
-    }
-
-    //清除总个界面
-    public void cleanSurfaceView() {
-        Log.d(TAG, "cleanSurfaceView");
-        cleanDrawCanvas();
-        mCacheBitmap.eraseColor(Color.TRANSPARENT);
-        requestCacheDraw();
-    }
-
-    public Canvas getCacheCanvas() {
-        return mCacheCanvas;
-    }
-
-    public Canvas getDrawCanvas() {
-        return mDrawCanvas;
-    }
-
-    public Bitmap getBgBitmap() {
-        return mBgBitmap;
-    }
-
-    public void setBgBitmap(Bitmap mBgBitmap) {
-        this.mBgBitmap = mBgBitmap;
-    }
-
-    public Bitmap getSkipBitmap() {
-        return mDrawBitmap;
-    }
-
-    public Bitmap getCacheBitmap() {
-        return mCacheBitmap;
     }
 
     private IDrawer getDrawer(int pointId) {
-        if (Util.getMode() == Util.ERASER) {
-            return mFingerEraser;
-        } else if (Util.getMode() == Util.GESTURE) {
-            return mGestureEraser;
-        } else {
-            return mPencilList.get(pointId);
-        }
+        return mPencilList.get(pointId);
     }
 
     private void clearAllDrawer() {
-        mFingerEraser = null;
-        mGestureEraser = null;
         mPencilList.clear();
     }
 
@@ -420,22 +425,8 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
         if (mPaint == null) {
             toCreatePaint();
         }
-
-        IDrawer drawer = null;
-        if (Util.getMode() == Util.ERASER) {
-            if (mFingerEraser == null) {
-                mFingerEraser = new FingerEraser(getContext());
-            }
-            drawer = mFingerEraser;
-        } else if (Util.getMode() == Util.GESTURE) {
-            if (mGestureEraser == null) {
-                mGestureEraser = new GestureEraser(getContext());
-            }
-            drawer = mGestureEraser;
-        } else {
-            drawer = new Pencil(mPaint);
-            mPencilList.append(pointId, drawer);
-        }
+        IDrawer drawer = new Pencil(mPaint);
+        mPencilList.append(pointId, drawer);
         return drawer;
     }
 
@@ -450,31 +441,100 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
         mPaint.setStrokeWidth(size);
     }
 
-    public void upateDrawSkipPathRect(List<Path> drawSkipPathRect) {
-        if (drawSkipPathRect == null) {
-            return;
+    public Canvas getDrawCanvas() {
+        return mDrawCanvas;
+    }
+
+    public void setMethodChannel(MethodChannel channel) {
+        this.methodChannel = channel;
+    }
+
+    public void updatePenColor(int color) {
+        if (mPaint != null) {
+            android.util.Log.d("PenSettings", "Received method call from Flutter - Color:" + mPaint.getColor());
+            android.util.Log.d("PenSettings", "Received method call of mPaint - Color:" + mPaint.getColor());
+            mPaint.setColor(color);
+            android.util.Log.d("PenSettings", "Received method call after mPaint - Color:" + mPaint.getColor());
+            if (Color.alpha(color) < 255) {
+                // Highlighter settings
+                mPaint.setStrokeCap(Paint.Cap.SQUARE);
+                mPaint.setStrokeJoin(Paint.Join.ROUND);
+                mPaint.setStyle(Paint.Style.STROKE);
+                mPaint.setPathEffect(null);
+                mPaint.setXfermode(new android.graphics.PorterDuffXfermode(
+                        android.graphics.PorterDuff.Mode.SRC_OVER));
+                mPaint.setAlpha(Color.alpha(color));
+                mPaint.setAlpha(defaultHighlighterAlpha);
+            } else {
+                // Normal pen settings
+                mPaint.setStrokeCap(Paint.Cap.ROUND);
+                mPaint.setStrokeJoin(Paint.Join.ROUND);
+                mPaint.setStyle(Paint.Style.STROKE);
+                mPaint.setPathEffect(new android.graphics.CornerPathEffect(40f));
+                mPaint.setXfermode(null);
+                mPaint.setAlpha(255);
+            }
         }
-        drawSkipBoundsRect.setEmpty();
-        this.drawSkipPathList = drawSkipPathRect;
-        for (Path skipPath : drawSkipPathList) {
-            RectF rectF = new RectF();
-            skipPath.computeBounds(rectF, true);
-            drawSkipBoundsRect.union((int) rectF.left, (int) rectF.top, (int) rectF.right, (int) rectF.bottom);
+    }
+
+    public void updatePenWidth(float width) {
+        if (mPaint != null) {
+            float density = getResources().getDisplayMetrics().density;
+            mPaint.setStrokeWidth(width * density);
         }
     }
 
-    public Rect getDrawSkipBoundsRect() {
-        return drawSkipBoundsRect;
+    public void setDashed(boolean dashed) {
+        isDashed = dashed;
+        if (mPaint != null) {
+            if (dashed) {
+                // Set up dashed effect if needed
+                mPaint.setPathEffect(new android.graphics.DashPathEffect(
+                        new float[]{DASH_LENGTH, GAP_LENGTH}, 0));
+            } else {
+                mPaint.setPathEffect(null);
+            }
+        }
+        updatePenColor(mPaint.getColor());
     }
 
-
-    public boolean isIntersectWithSkipBounds(int x, int y) {
-        return drawSkipBoundsRect != null && drawSkipBoundsRect.contains(x, y);
+    public void setDoublePenColor1(int color) {
+        pen1Color = color;
     }
 
-    public boolean isIntersectWithSkipBounds(Rect rect) {
-        //不要用intersect，会修改drawSkipBoundsRect，导致区域异常;
-        return drawSkipBoundsRect != null && rect != null && Rect.intersects(drawSkipBoundsRect, rect);
+    public void setDoublePenColor2(int color) {
+        pen2Color = color;
     }
 
+    public void setFingerAsEraserEnabled(boolean enabled) {
+        fingerAsEraserEnabled = enabled;
+    }
+
+    public void setFistAsEraserEnabled(boolean enabled) {
+        fistAsEraserEnabled = enabled;
+    }
+
+    public void setDoublePenThreshold(float threshold) {
+        doublePenThreshold = threshold;
+    }
+
+    public void setFingerAsEraserThreshold(float threshold) {
+        fingerAsEraserThreshold = threshold;
+    }
+
+    public void setFistAsEraserThreshold(float threshold) {
+        fistAsEraserThreshold = threshold;
+    }
+
+    public void setDoublePenModeEnabled(boolean enabled) {
+        doublePenEnabled = enabled;
+    }
+
+    public void clearCanvas() {
+        // Clear the canvas
+        mCacheBitmap.eraseColor(Color.TRANSPARENT);
+        mDrawBitmap.eraseColor(Color.TRANSPARENT);
+        requestCacheDraw();
+        mAcd.stopAndClearAccelerate();
+    }
 }

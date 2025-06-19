@@ -26,6 +26,6 @@ class MainActivity: FlutterActivity() {
         flutterEngine
             .platformViewsController
             .registry
-            .registerViewFactory("custom_canvas_view", ActivityMainViewFactory())
+            .registerViewFactory("custom_canvas_view", ActivityMainViewFactory(flutterEngine.dartExecutor.binaryMessenger))
     }
 }
