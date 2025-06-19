@@ -35,7 +35,6 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
     private Surface mSurface = null;
     private Paint mPaint = null;
     private Rect mScreenRect = null;
-    private Bitmap mBgBitmap = null;
     private Bitmap mCacheBitmap = null;//成熟区，保存的是已经绘制的笔迹
     private Bitmap mDrawBitmap = null;//刷新区，保存的是书写过程传给加速库的笔迹
     private Canvas mCacheCanvas = null;
@@ -99,9 +98,6 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
         setSurfaceTextureListener(this);
         setOpaque(false);
         mScreenRect = new Rect(0, 0, Util.SCREEN_WIDTH, Util.SCREEN_HEIGHT);
-
-        // Create Bg bitmap
-        mBgBitmap = Util.returnBgBitmap(this.getContext(), R.mipmap.canvas_bg_0, Util.SCREEN_WIDTH, Util.SCREEN_HEIGHT);
 
         // Create cache bitmap
         mCacheBitmap = Bitmap.createBitmap(Util.SCREEN_WIDTH, Util.SCREEN_HEIGHT, Bitmap.Config.ARGB_8888);
@@ -407,8 +403,6 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
 
             Canvas canvas = mSurface.lockHardwareCanvas();
             if (canvas == null) return;
-            if(mBgBitmap!=null)
-                canvas.drawBitmap(mBgBitmap, null, mScreenRect, null);
             canvas.drawBitmap(mCacheBitmap, null, mScreenRect, null);
 
             mSurface.unlockCanvasAndPost(canvas);
