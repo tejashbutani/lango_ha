@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:lango_ha/DrawingScreen.dart';
+import 'package:lango_ha/DrawingScreen2.dart';
 
 void main() {
   runApp(const MyApp());
@@ -28,7 +29,7 @@ class _MyAppState extends State<MyApp> {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: DrawingScreen(),
+      home: DrawingScreen2(),
     );
   }
 }
