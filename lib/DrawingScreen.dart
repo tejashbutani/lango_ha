@@ -22,7 +22,7 @@ class _DrawingScreenState extends State<DrawingScreen> {
         androidViewSize = Size(constraints.maxWidth, constraints.maxHeight);
 
         return Scaffold(
-          backgroundColor: Colors.grey.shade200,
+          backgroundColor: Colors.grey.shade600,
           body: Stack(
             children: [
               CustomPaint(
@@ -37,7 +37,7 @@ class _DrawingScreenState extends State<DrawingScreen> {
                   viewType: 'custom_canvas_view',
                   creationParams: {
                      'color': Colors.white.value,
-                          'width': 5,
+                          'width': 1,
                           "doublePenModeEnabled": false,
                           "doublePenColor1": Colors.red.value,
                           "doublePenColor2": Colors.blue.value,
@@ -132,7 +132,7 @@ class ToolsPainter extends CustomPainter {
 
       final paint = Paint()
         ..color = Colors.red
-        ..strokeWidth = 6
+        ..strokeWidth = 2
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
         ..style = PaintingStyle.stroke;
