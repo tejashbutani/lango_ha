@@ -75,6 +75,10 @@ class _DrawingScreen2State extends State<DrawingScreen2> {
                   size: const Size(3860, 2160),
                 ),
               ),
+            ],
+          ),
+          floatingActionButton: Row(
+            children: [
               Positioned(
                 bottom: 40,
                 right: 120,
