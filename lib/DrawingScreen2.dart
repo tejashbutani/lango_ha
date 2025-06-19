@@ -50,8 +50,8 @@ class _DrawingScreen2State extends State<DrawingScreen2> {
               ),
               if (isPenEnabled)
                 Container(
-                  width: 10,
-                  height: 10,
+                  width: 300,
+                  height: 300,
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.white, width: 1),
                     borderRadius: BorderRadius.circular(5),
