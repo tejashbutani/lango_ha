@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import android.graphics.PointF;
 
+import com.example.lango_ha.R;
 import com.xbh.whiteboard.AccelerateDraw;
 
 public class DrawSurfaceView extends TextureView implements TextureView.SurfaceTextureListener {
@@ -34,6 +35,7 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
     private Surface mSurface = null;
     private Paint mPaint = null;
     private Rect mScreenRect = null;
+    private Bitmap mBgBitmap = null;
     private Bitmap mCacheBitmap = null;//成熟区，保存的是已经绘制的笔迹
     private Bitmap mDrawBitmap = null;//刷新区，保存的是书写过程传给加速库的笔迹
     private Canvas mCacheCanvas = null;
@@ -97,6 +99,9 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
         setSurfaceTextureListener(this);
         setOpaque(false);
         mScreenRect = new Rect(0, 0, Util.SCREEN_WIDTH, Util.SCREEN_HEIGHT);
+
+        // Create Bg bitmap
+        mBgBitmap = Util.returnBgBitmap(this.getContext(), R.mipmap.canvas_bg_0, Util.SCREEN_WIDTH, Util.SCREEN_HEIGHT);
 
         // Create cache bitmap
         mCacheBitmap = Bitmap.createBitmap(Util.SCREEN_WIDTH, Util.SCREEN_HEIGHT, Bitmap.Config.ARGB_8888);
@@ -378,45 +383,35 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
         return true;
     }
 
+    //刷新书写内容
     public void refreshCache(Rect rect) {
         if (rect != null) {
+            /*针对多窗适配*/
             int left = mViewRect.left + rect.left;
             int top = mViewRect.top + rect.top;
-            // Change the last parameter to true to preserve background
+
+            //把 书写图层 传入加速库
             mAcd.refreshAccelerateDrawV2(left, top, rect.width(), rect.height(),
-                    mDrawBitmap, rect.left, rect.top, true);
+                    mDrawBitmap, rect.left, rect.top, false);
         }
     }
 
+
+    //刷新总个屏幕
     public void requestCacheDraw() {
-        if (mSurface == null || !mSurface.isValid()) {
-            return;
-        }
-        
-        synchronized (mSurface) {
-            // Use SRC_OVER for proper blending when combining bitmaps
-            Paint blendPaint = new Paint();
-            blendPaint.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_OVER));
-            blendPaint.setAntiAlias(true);
-            blendPaint.setFilterBitmap(true);
-            
-            mCacheCanvas.drawBitmap(mDrawBitmap, null, mScreenRect, blendPaint);
+        synchronized (this) {
+
+            //绘制之前，将书写图层叠加到 成熟图层
+            mCacheCanvas.drawBitmap(mDrawBitmap, null, mScreenRect, null);
             mDrawBitmap.eraseColor(Color.TRANSPARENT);
 
-            Canvas canvas = null;
-            try {
-                canvas = mSurface.lockCanvas(null);
-                if (canvas != null) {
-                    canvas.drawColor(Color.TRANSPARENT, android.graphics.PorterDuff.Mode.CLEAR);
-                    canvas.drawBitmap(mCacheBitmap, null, mScreenRect, null);
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error drawing to surface", e);
-            } finally {
-                if (canvas != null) {
-                    mSurface.unlockCanvasAndPost(canvas);
-                }
-            }
+            Canvas canvas = mSurface.lockHardwareCanvas();
+            if (canvas == null) return;
+            if(mBgBitmap!=null)
+                canvas.drawBitmap(mBgBitmap, null, mScreenRect, null);
+            canvas.drawBitmap(mCacheBitmap, null, mScreenRect, null);
+
+            mSurface.unlockCanvasAndPost(canvas);
         }
     }
 
