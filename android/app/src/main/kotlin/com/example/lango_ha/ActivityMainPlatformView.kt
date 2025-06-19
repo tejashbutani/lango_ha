@@ -28,7 +28,7 @@ class ActivityMainPlatformView(
             (creationParams?.get("color") as? Number)?.toInt() ?: Color.BLACK
         )
         view.updatePenWidth(
-            (creationParams?.get("width") as? Double)?.toFloat() ?: 1.0f
+            (creationParams?.get("width") as? Double)?.toFloat() ?: 3.0f
         )
         view.setDoublePenThreshold(
             (creationParams?.get("doublePenThreshold") as? Double)?.toFloat() ?: 5.0f

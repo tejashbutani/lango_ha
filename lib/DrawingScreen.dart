@@ -37,7 +37,7 @@ class _DrawingScreenState extends State<DrawingScreen> {
                   viewType: 'custom_canvas_view',
                   creationParams: {
                      'color': Colors.white.value,
-                          'width': 1,
+                          'width': 3,
                           "doublePenModeEnabled": false,
                           "doublePenColor1": Colors.red.value,
                           "doublePenColor2": Colors.blue.value,
