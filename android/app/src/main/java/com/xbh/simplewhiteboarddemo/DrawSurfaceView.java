@@ -144,6 +144,19 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
         //主进程判断，关闭加速，防止异常时未关闭加速
         AccelerateDraw.getInstance().accelerateDeInit();
         AccelerateDraw.getInstance().accelerateInit(Util.SCREEN_WIDTH, Util.SCREEN_HEIGHT);
+        
+        // Configure AccelerateDraw to work with TextureView Surface
+        if (mSurface != null) {
+            // Pass the TextureView surface to the acceleration library
+            // This might need to be done differently based on your AccelerateDraw implementation
+            try {
+                // You may need to add a method to AccelerateDraw to set the surface
+                // mAcd.setSurface(mSurface);
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to set surface for AccelerateDraw: " + e.getMessage());
+            }
+        }
+        
         AccelerateDraw.getInstance().stopAndClearAccelerate();
 
         //适配多窗
@@ -331,9 +344,25 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
             int left = mViewRect.left + rect.left;
             int top = mViewRect.top + rect.top;
 
-            //把 书写图层 传入加速库
+            //把 书写图层 传入加速库 (for processing)
             mAcd.refreshAccelerateDrawV2(left, top, rect.width(), rect.height(),
                     mDrawBitmap, rect.left, rect.top, false);
+            
+            // Also draw directly to TextureView surface for immediate display
+            if (mSurface != null) {
+                synchronized (this) {
+                    Canvas canvas = mSurface.lockCanvas(rect);
+                    if (canvas != null) {
+                        // Draw background, cache, and current drawing
+                        if (mBgBitmap != null) {
+                            canvas.drawBitmap(mBgBitmap, rect, rect, null);
+                        }
+                        canvas.drawBitmap(mCacheBitmap, rect, rect, null);
+                        canvas.drawBitmap(mDrawBitmap, rect, rect, null);
+                        mSurface.unlockCanvasAndPost(canvas);
+                    }
+                }
+            }
         }
     }
 
@@ -355,7 +384,8 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
             
             if(mBgBitmap!=null)
                 canvas.drawBitmap(mBgBitmap, null, mScreenRect, null);
-            canvas.drawBitmap(mCacheBitmap, null, mScreenRect, null);
+            
+           canvas.drawBitmap(mCacheBitmap, null, mScreenRect, null);
 
             mSurface.unlockCanvasAndPost(canvas);
         }
