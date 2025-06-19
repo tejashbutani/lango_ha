@@ -131,8 +131,8 @@ class ToolsPainter extends CustomPainter {
       if (stroke.points.length < 2) continue;
 
       final paint = Paint()
-        ..color = Colors.white
-        ..strokeWidth = 1
+        ..color = stroke.color
+        ..strokeWidth = stroke.width
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
         ..style = PaintingStyle.stroke;
