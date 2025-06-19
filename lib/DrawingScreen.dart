@@ -22,7 +22,7 @@ class _DrawingScreenState extends State<DrawingScreen> {
         androidViewSize = Size(constraints.maxWidth, constraints.maxHeight);
 
         return Scaffold(
-          backgroundColor: Colors.white70,
+          backgroundColor: Colors.grey.shade200,
           body: Stack(
             children: [
               CustomPaint(
@@ -132,7 +132,7 @@ class ToolsPainter extends CustomPainter {
 
       final paint = Paint()
         ..color = Colors.red
-        ..strokeWidth = 4
+        ..strokeWidth = 6
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
         ..style = PaintingStyle.stroke;
