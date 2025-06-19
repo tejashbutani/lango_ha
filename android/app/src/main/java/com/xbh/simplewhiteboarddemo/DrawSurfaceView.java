@@ -379,7 +379,7 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
         return true;
     }
 
-    //刷新书写内容
+    //刷新书写内容 // for refreshing current stroke
     public void refreshCache(Rect rect) {
         if (rect != null) {
             /*针对多窗适配*/
@@ -395,18 +395,18 @@ public class DrawSurfaceView extends TextureView implements TextureView.SurfaceT
 
     //刷新总个屏幕
     public void requestCacheDraw() {
-        synchronized (this) {
+        // synchronized (this) {
 
-            //绘制之前，将书写图层叠加到 成熟图层
-            mCacheCanvas.drawBitmap(mDrawBitmap, null, mScreenRect, null);
-            mDrawBitmap.eraseColor(Color.TRANSPARENT);
+        //     //绘制之前，将书写图层叠加到 成熟图层
+        //     mCacheCanvas.drawBitmap(mDrawBitmap, null, mScreenRect, null);
+        //     mDrawBitmap.eraseColor(Color.TRANSPARENT);
 
-            Canvas canvas = mSurface.lockHardwareCanvas();
-            if (canvas == null) return;
-            canvas.drawBitmap(mCacheBitmap, null, mScreenRect, null);
+        //     Canvas canvas = mSurface.lockHardwareCanvas();
+        //     if (canvas == null) return;
+        //     canvas.drawBitmap(mCacheBitmap, null, mScreenRect, null);
 
-            mSurface.unlockCanvasAndPost(canvas);
-        }
+        //     mSurface.unlockCanvasAndPost(canvas);
+        // }
     }
 
     private IDrawer getDrawer(int pointId) {
