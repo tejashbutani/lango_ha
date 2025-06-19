@@ -21,75 +21,78 @@ class _DrawingScreenState extends State<DrawingScreen> {
       builder: (context, constraints) {
         androidViewSize = Size(constraints.maxWidth, constraints.maxHeight);
 
-        return Stack(
-          children: [
-            CustomPaint(
-              painter: ToolsPainter(
-                strokes: strokes,
-                androidViewSize: androidViewSize,
+        return Scaffold(
+          backgroundColor: Colors.white70,
+          body: Stack(
+            children: [
+              CustomPaint(
+                painter: ToolsPainter(
+                  strokes: strokes,
+                  androidViewSize: androidViewSize,
+                ),
+                size: const Size(3860, 2160),
               ),
-              size: const Size(3860, 2160),
-            ),
-            if (isPenEnabled)
-              AndroidView(
-                viewType: 'custom_canvas_view',
-                creationParams: {
-                   'color': Colors.white.value,
-                        'width': 5,
-                        "doublePenModeEnabled": false,
-                        "doublePenColor1": Colors.red.value,
-                        "doublePenColor2": Colors.blue.value,
-                        "fingerAsEraserEnabled": false,
-                        // "fingerAsEraserEnabled": true,
-                        "fistAsEraserEnabled": false,
-                        "fistAsEraserThreshold": 1000,
-                        "fingerAsEraserThreshold": 1000,
-                        "doublePenThreshold": 1000,
-                },
-                creationParamsCodec: const StandardMessageCodec(),
-                onPlatformViewCreated: (int id) {
-                  print("Trying to create Platform Channel");
-                  // if (!_androidViewCreated) {
-                  print("Trying to create Platform Channel");
-                  androidViewChannel = MethodChannel('custom_canvas_view_$id');
-                  androidViewChannel?.setMethodCallHandler(_handleMethodCall);
-                  // _androidViewCreated = true;
-                  // }
-                },
-              ),
-            Positioned(
-              bottom: 40,
-              right: 120,
-              child: FloatingActionButton(
-                onPressed: () {
-                  setState(() {
-                    isPenEnabled = !isPenEnabled;
-                  });
-                },
-                backgroundColor: isPenEnabled ? Colors.black : Colors.white,
-                child: Icon(
-                  isPenEnabled ? Icons.edit : Icons.edit_off,
-                  color: isPenEnabled ? Colors.red : Colors.red,
+              if (isPenEnabled)
+                AndroidView(
+                  viewType: 'custom_canvas_view',
+                  creationParams: {
+                     'color': Colors.white.value,
+                          'width': 5,
+                          "doublePenModeEnabled": false,
+                          "doublePenColor1": Colors.red.value,
+                          "doublePenColor2": Colors.blue.value,
+                          "fingerAsEraserEnabled": false,
+                          // "fingerAsEraserEnabled": true,
+                          "fistAsEraserEnabled": false,
+                          "fistAsEraserThreshold": 1000,
+                          "fingerAsEraserThreshold": 1000,
+                          "doublePenThreshold": 1000,
+                  },
+                  creationParamsCodec: const StandardMessageCodec(),
+                  onPlatformViewCreated: (int id) {
+                    print("Trying to create Platform Channel");
+                    // if (!_androidViewCreated) {
+                    print("Trying to create Platform Channel");
+                    androidViewChannel = MethodChannel('custom_canvas_view_$id');
+                    androidViewChannel?.setMethodCallHandler(_handleMethodCall);
+                    // _androidViewCreated = true;
+                    // }
+                  },
+                ),
+              Positioned(
+                bottom: 40,
+                right: 120,
+                child: FloatingActionButton(
+                  onPressed: () {
+                    setState(() {
+                      isPenEnabled = !isPenEnabled;
+                    });
+                  },
+                  backgroundColor: isPenEnabled ? Colors.black : Colors.white,
+                  child: Icon(
+                    isPenEnabled ? Icons.edit : Icons.edit_off,
+                    color: isPenEnabled ? Colors.red : Colors.red,
+                  ),
                 ),
               ),
-            ),
-            Positioned(
-              bottom: 40,
-              right: 40,
-              child: FloatingActionButton(
-                onPressed: () {
-                  setState(() {
-                    strokes.clear();
-                  });
-                },
-                backgroundColor: Colors.white,
-                child: const Icon(
-                  Icons.delete_outline,
-                  color: Colors.red,
+              Positioned(
+                bottom: 40,
+                right: 40,
+                child: FloatingActionButton(
+                  onPressed: () {
+                    setState(() {
+                      strokes.clear();
+                    });
+                  },
+                  backgroundColor: Colors.white,
+                  child: const Icon(
+                    Icons.delete_outline,
+                    color: Colors.red,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
@@ -128,8 +131,8 @@ class ToolsPainter extends CustomPainter {
       if (stroke.points.length < 2) continue;
 
       final paint = Paint()
-        ..color = stroke.color
-        ..strokeWidth = stroke.width
+        ..color = Colors.red
+        ..strokeWidth = 4
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
         ..style = PaintingStyle.stroke;
